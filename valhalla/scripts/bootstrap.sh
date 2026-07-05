@@ -32,6 +32,15 @@ fi
 
 require_cmd docker
 
+# docker-compose v1 varsa v2 plugin kurmayı dene (ContainerConfig hatasını önler)
+if ! docker compose version >/dev/null 2>&1; then
+  if command -v docker-compose >/dev/null 2>&1; then
+    warn "docker-compose v1 tespit edildi — v2 plugin kuruluyor (önerilir)..."
+    $APT update -qq
+    DEBIAN_FRONTEND=noninteractive $APT install -y docker-compose-plugin 2>/dev/null || true
+  fi
+fi
+
 if ! docker compose version >/dev/null 2>&1 && ! command -v docker-compose >/dev/null 2>&1; then
   info "Docker Compose kuruluyor..."
   if $APT update -qq && DEBIAN_FRONTEND=noninteractive $APT install -y docker-compose-plugin 2>/dev/null; then

@@ -39,6 +39,11 @@ backup:
 clean:
 	@./valhalla/scripts/clean.sh
 
+fix-docker:
+	@docker rm -f valhalla 2>/dev/null || true
+	@docker-compose down --remove-orphans 2>/dev/null || docker compose down --remove-orphans 2>/dev/null || true
+	@echo "Eski container temizlendi. Tekrar: make install"
+
 update:
 	@./valhalla/scripts/update.sh
 

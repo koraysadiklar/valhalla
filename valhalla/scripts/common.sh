@@ -53,6 +53,16 @@ docker_compose() {
   fi
 }
 
+# docker-compose v1.29 + yeni Docker Engine → KeyError: 'ContainerConfig'
+# Eski container'ı silip sıfırdan oluşturur.
+docker_compose_fresh_up() {
+  if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx valhalla; then
+    warn "Eski valhalla container'ı temizleniyor (ContainerConfig hatası önlemi)..."
+    docker rm -f valhalla 2>/dev/null || true
+  fi
+  docker_compose up -d "$@"
+}
+
 require_docker() {
   require_cmd docker
   if docker compose version >/dev/null 2>&1; then

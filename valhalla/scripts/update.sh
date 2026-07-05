@@ -12,6 +12,7 @@ info "Güncel imaj çekiliyor..."
 docker_compose pull
 
 info "Container yeniden oluşturuluyor..."
-docker_compose up -d --force-recreate
+docker rm -f valhalla 2>/dev/null || true
+docker_compose up -d
 
 info "Tamamlandı."

@@ -55,7 +55,7 @@ info "      İmaj hazır"
 # ── Aşama 3: Container başlat ──
 echo ""
 info "[3/5] Container başlatılıyor..."
-docker_compose up -d
+docker_compose_fresh_up
 sleep 3
 info "      Container ID: $(docker ps -aq --filter name=^valhalla$ | head -1)"
 
