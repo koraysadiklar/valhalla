@@ -67,6 +67,67 @@ require_docker() {
   exit 1
 }
 
+valhalla_container_status() {
+  docker inspect -f '{{.State.Status}}' valhalla 2>/dev/null || echo "missing"
+}
+
+valhalla_alive() {
+  local status
+  status="$(valhalla_container_status)"
+  [[ "$status" == "running" || "$status" == "restarting" || "$status" == "created" ]]
+}
+
+valhalla_log_tail() {
+  docker logs valhalla 2>&1 | tail -n "${1:-1}" | sed 's/^[[:space:]]*//' | tr -d '\r'
+}
+
+valhalla_detect_stage() {
+  local logs
+  logs="$(docker logs valhalla 2>&1 | tail -30)"
+
+  if curl -sf "http://localhost:$(get_port)/status" >/dev/null 2>&1; then
+    echo "Servis hazır"
+  elif [[ "$logs" == *"Starting valhalla service"* ]]; then
+    echo "HTTP servisi başlatılıyor"
+  elif [[ "$logs" == *"Enhancing the initial graph"* ]]; then
+    echo "Graph iyileştiriliyor (son aşama)"
+  elif [[ "$logs" == *"Build the initial graph"* ]] || [[ "$logs" == *"valhalla_build_tiles"* ]]; then
+    echo "Routing tile'ları üretiliyor"
+  elif [[ "$logs" == *"Building timezone"* ]]; then
+    echo "Timezone veritabanı oluşturuluyor"
+  elif [[ "$logs" == *"Building admin"* ]]; then
+    echo "Admin veritabanı oluşturuluyor"
+  elif [[ "$logs" == *"Downloading links"* ]] || [[ "$logs" == *"download"* ]]; then
+    echo "OSM harita dosyası (PBF) indiriliyor"
+  elif compgen -G "$CUSTOM_FILES/*.osm.pbf" >/dev/null 2>&1; then
+    echo "PBF indirildi, yapılandırma hazırlanıyor"
+  else
+    echo "Container başlatılıyor"
+  fi
+}
+
+valhalla_diagnose_failure() {
+  local status exit_code oom
+  status="$(valhalla_container_status)"
+  exit_code="$(docker inspect -f '{{.State.ExitCode}}' valhalla 2>/dev/null || echo "?")"
+  oom="$(docker inspect -f '{{.State.OOMKilled}}' valhalla 2>/dev/null || echo "false")"
+
+  echo ""
+  error "Kurulum tamamlanamadı (container: ${status}, exit: ${exit_code})"
+  if [[ "$oom" == "true" ]]; then
+    warn "Bellek yetersiz (OOM). .env içinde SERVER_THREADS=2 yapın veya make region REGION=istanbul deneyin."
+  fi
+  echo ""
+  echo "────────── Container ──────────"
+  docker ps -a --filter "name=^valhalla$" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+  echo ""
+  echo "────────── Son loglar ──────────"
+  docker logs valhalla 2>&1 | tail -50
+  echo ""
+  warn "Canlı izleme: make logs"
+  warn "Yeniden deneme: make rebuild"
+}
+
 valhalla_running() {
   docker ps --filter "name=^valhalla$" --filter "status=running" --format '{{.Names}}' 2>/dev/null | grep -qx valhalla
 }

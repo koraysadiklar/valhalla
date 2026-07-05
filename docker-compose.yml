@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   valhalla:
     image: ghcr.io/valhalla/valhalla-scripted:latest
@@ -9,7 +11,7 @@ services:
       - ./valhalla/custom_files:/custom_files
     environment:
       tile_urls: ${TILE_URLS:-}
-      server_threads: ${SERVER_THREADS:-4}
+      server_threads: ${SERVER_THREADS:-2}
       use_tiles_ignore_pbf: ${USE_TILES_IGNORE_PBF:-True}
       force_rebuild: ${FORCE_REBUILD:-False}
       build_elevation: ${BUILD_ELEVATION:-False}
@@ -20,7 +22,8 @@ services:
       serve_tiles: ${SERVE_TILES:-True}
       update_existing_config: ${UPDATE_EXISTING_CONFIG:-True}
       use_default_speeds_config: ${USE_DEFAULT_SPEEDS_CONFIG:-True}
-    mem_limit: ${VALHALLA_MEMORY_LIMIT:-8G}
+    mem_limit: 7g
+    shm_size: 256m
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8002/status"]
       interval: 30s
