@@ -176,7 +176,7 @@ valhalla_resolve_url() {
   fi
 
   if [[ "$final" != "$url" ]]; then
-    info "Yönlendirme: $(basename "$final")"
+    info "Yönlendirme: $(basename "$final")" >&2
   fi
   echo "$url"
 }
