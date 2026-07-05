@@ -150,21 +150,55 @@ valhalla_verify_pbf() {
   return 0
 }
 
+valhalla_normalize_url() {
+  local url="$1"
+  # Geofabrik: Turkey asia → europe taşındı
+  url="${url//download.geofabrik.de\/asia\/turkey/download.geofabrik.de/europe/turkey}"
+  echo "$url"
+}
+
+valhalla_resolve_url() {
+  local url="$1"
+  local final
+
+  url="$(valhalla_normalize_url "$url")"
+  final="$(curl -fsI -L -o /dev/null -w '%{url_effective}' "$url" 2>/dev/null || true)"
+
+  if [[ -z "$final" ]]; then
+    echo "$url"
+    return 0
+  fi
+
+  if [[ "$final" =~ download\.geofabrik\.de/?$ ]]; then
+    error "Geçersiz URL — Geofabrik ana sayfaya yönlendirdi: $url"
+    error "Türkiye için doğru URL: https://download.geofabrik.de/europe/turkey-latest.osm.pbf"
+    return 1
+  fi
+
+  if [[ "$final" != "$url" ]]; then
+    info "Yönlendirme: $(basename "$final")"
+  fi
+  echo "$url"
+}
+
 valhalla_download_pbf() {
   local url="${1:?URL gerekli}"
   local dest="${2:?Hedef dosya gerekli}"
   local tmp="${dest}.part"
+  local resolved
+
+  resolved="$(valhalla_resolve_url "$url")" || return 1
 
   mkdir -p "$(dirname "$dest")"
   rm -f "$tmp"
-  info "İndiriliyor: $url"
+  info "İndiriliyor: $resolved"
 
-  if command -v wget >/dev/null 2>&1; then
-    wget --progress=dot:giga -O "$tmp" "$url"
-  elif command -v curl >/dev/null 2>&1; then
-    curl -L --fail --progress-bar -o "$tmp" "$url"
+  if command -v curl >/dev/null 2>&1; then
+    curl -L --fail --retry 3 --retry-delay 5 --progress-bar -o "$tmp" "$resolved"
+  elif command -v wget >/dev/null 2>&1; then
+    wget --progress=dot:giga -O "$tmp" "$resolved"
   else
-    error "wget veya curl gerekli."
+    error "curl veya wget gerekli."
     return 1
   fi
 
