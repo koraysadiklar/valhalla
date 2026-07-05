@@ -8,11 +8,10 @@ up:
 	@bash -c 'source valhalla/scripts/common.sh && valhalla_start'
 
 down:
-	@docker stop valhalla 2>/dev/null || true
-	@docker rm valhalla 2>/dev/null || true
+	@bash -c 'source valhalla/scripts/common.sh && valhalla_cleanup_containers'
 
 logs:
-	@docker logs -f valhalla
+	@bash -c 'source valhalla/scripts/common.sh; id=$$(valhalla_container_id); docker logs -f $${id:-valhalla}'
 
 restart:
 	@docker restart valhalla

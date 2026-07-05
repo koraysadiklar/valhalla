@@ -64,7 +64,7 @@ valhalla_docker_pull() {
 
 # docker-compose v1.29 ContainerConfig hatasını tamamen bypass eder
 valhalla_docker_start() {
-  docker rm -f valhalla 2>/dev/null || true
+  valhalla_cleanup_containers
 
   # PBF host'ta indirildi — container tekrar indirmesin
   local tile_urls_env=""
@@ -261,8 +261,38 @@ valhalla_ensure_pbf() {
   valhalla_refresh_pbf
 }
 
+valhalla_cleanup_containers() {
+  docker ps -aq --filter "name=valhalla" 2>/dev/null | xargs -r docker rm -f 2>/dev/null || true
+  docker rm -f valhalla 2>/dev/null || true
+}
+
+valhalla_container_id() {
+  local id
+  id="$(docker ps -aq --filter 'name=^valhalla$' 2>/dev/null | head -1)"
+  if [[ -n "$id" ]]; then
+    echo "$id"
+    return
+  fi
+  docker ps -aq --filter "name=valhalla" 2>/dev/null | head -1
+}
+
+valhalla_docker_logs() {
+  local id
+  id="$(valhalla_container_id)"
+  if [[ -z "$id" ]]; then
+    return 1
+  fi
+  docker logs "$id" "$@" 2>&1
+}
+
 valhalla_container_status() {
-  docker inspect -f '{{.State.Status}}' valhalla 2>/dev/null || echo "missing"
+  local id
+  id="$(docker ps -aq --filter "name=valhalla" 2>/dev/null | head -1)"
+  if [[ -z "$id" ]]; then
+    echo "missing"
+    return
+  fi
+  docker inspect -f '{{.State.Status}}' "$id" 2>/dev/null || echo "missing"
 }
 
 valhalla_alive() {
@@ -272,7 +302,7 @@ valhalla_alive() {
 }
 
 valhalla_log_tail() {
-  docker logs valhalla 2>&1 | tail -n "${1:-1}" | sed 's/^[[:space:]]*//' | tr -d '\r'
+  valhalla_docker_logs 2>&1 | tail -n "${1:-1}" | sed 's/^[[:space:]]*//' | tr -d '\r'
 }
 
 valhalla_pbf_info() {
@@ -291,7 +321,7 @@ valhalla_pbf_info() {
 
 valhalla_fatal_in_logs() {
   local logs
-  logs="$(docker logs valhalla 2>&1 | tail -80)"
+  logs="$(valhalla_docker_logs 2>/dev/null | tail -80 || true)"
   [[ "$logs" == *"Aborted"* ]] || \
   [[ "$logs" == *"core dumped"* ]] || \
   [[ "$logs" == *"pbf_error"* ]] || \
@@ -303,7 +333,7 @@ valhalla_fatal_in_logs() {
 
 valhalla_detect_stage() {
   local logs
-  logs="$(docker logs valhalla 2>&1 | tail -40)"
+  logs="$(valhalla_docker_logs 2>/dev/null | tail -40 || true)"
 
   if valhalla_fatal_in_logs; then
     echo "HATA: build çöktü (admin/tile aşaması)"
@@ -329,19 +359,20 @@ valhalla_detect_stage() {
 }
 
 valhalla_diagnose_failure() {
-  local status exit_code oom
+  local status exit_code oom id
+  id="$(valhalla_container_id)"
   status="$(valhalla_container_status)"
-  exit_code="$(docker inspect -f '{{.State.ExitCode}}' valhalla 2>/dev/null || echo "?")"
-  oom="$(docker inspect -f '{{.State.OOMKilled}}' valhalla 2>/dev/null || echo "false")"
+  exit_code="$(docker inspect -f '{{.State.ExitCode}}' "${id:-valhalla}" 2>/dev/null || echo "?")"
+  oom="$(docker inspect -f '{{.State.OOMKilled}}' "${id:-valhalla}" 2>/dev/null || echo "false")"
 
   echo ""
   error "Kurulum tamamlanamadı (container: ${status}, exit: ${exit_code})"
-  if [[ "$oom" == "true" ]] || docker logs valhalla 2>&1 | tail -80 | grep -qE 'Aborted|core dumped|Killed|Cannot allocate memory'; then
+  if [[ "$oom" == "true" ]] || valhalla_docker_logs 2>/dev/null | tail -80 | grep -qE 'Aborted|core dumped|Killed|Cannot allocate memory'; then
     warn "Bellek yetersiz veya build çöktü."
     warn "Çözüm: .env → SERVER_THREADS=1, sonra make clean && make rebuild"
     warn "Hızlı test: make region REGION=istanbul"
   fi
-  if docker logs valhalla 2>&1 | tail -80 | grep -q "valhalla_build_admins"; then
+  if valhalla_docker_logs 2>/dev/null | tail -80 | grep -q "valhalla_build_admins"; then
     warn "Admin DB build başarısız. PBF dosyası eksik/bozuk olabilir:"
     warn "  ls -lh valhalla/custom_files/*.pbf   (Türkiye ~500MB olmalı)"
   fi
@@ -350,14 +381,14 @@ valhalla_diagnose_failure() {
   docker ps -a --filter "name=^valhalla$" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
   echo ""
   echo "────────── Son loglar ──────────"
-  docker logs valhalla 2>&1 | tail -50
+  valhalla_docker_logs 2>/dev/null | tail -50 || true
   echo ""
   warn "Canlı izleme: make logs"
   warn "Yeniden deneme: make rebuild"
 }
 
 valhalla_running() {
-  docker ps --filter "name=^valhalla$" --filter "status=running" --format '{{.Names}}' 2>/dev/null | grep -qx valhalla
+  [[ "$(valhalla_container_status)" == "running" ]]
 }
 
 ensure_dirs() {
