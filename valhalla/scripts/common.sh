@@ -81,11 +81,37 @@ valhalla_log_tail() {
   docker logs valhalla 2>&1 | tail -n "${1:-1}" | sed 's/^[[:space:]]*//' | tr -d '\r'
 }
 
+valhalla_pbf_info() {
+  local f size
+  shopt -s nullglob
+  local files=("$CUSTOM_FILES"/*.osm.pbf "$CUSTOM_FILES"/*.pbf)
+  if ((${#files[@]} == 0)); then
+    echo "PBF henüz yok"
+    return
+  fi
+  for f in "${files[@]}"; do
+    size="$(du -h "$f" 2>/dev/null | cut -f1)"
+    echo "$(basename "$f") (${size})"
+  done
+}
+
+valhalla_fatal_in_logs() {
+  local logs
+  logs="$(docker logs valhalla 2>&1 | tail -80)"
+  [[ "$logs" == *"Aborted"* ]] || \
+  [[ "$logs" == *"core dumped"* ]] || \
+  [[ "$logs" == *"Killed"* ]] || \
+  [[ "$logs" == *"Cannot allocate memory"* ]] || \
+  [[ "$logs" == *"valhalla_build_admins"* && "$logs" == *"ERROR"* ]]
+}
+
 valhalla_detect_stage() {
   local logs
-  logs="$(docker logs valhalla 2>&1 | tail -30)"
+  logs="$(docker logs valhalla 2>&1 | tail -40)"
 
-  if curl -sf "http://localhost:$(get_port)/status" >/dev/null 2>&1; then
+  if valhalla_fatal_in_logs; then
+    echo "HATA: build çöktü (admin/tile aşaması)"
+  elif curl -sf "http://localhost:$(get_port)/status" >/dev/null 2>&1; then
     echo "Servis hazır"
   elif [[ "$logs" == *"Starting valhalla service"* ]]; then
     echo "HTTP servisi başlatılıyor"
@@ -95,12 +121,12 @@ valhalla_detect_stage() {
     echo "Routing tile'ları üretiliyor"
   elif [[ "$logs" == *"Building timezone"* ]]; then
     echo "Timezone veritabanı oluşturuluyor"
-  elif [[ "$logs" == *"Building admin"* ]]; then
-    echo "Admin veritabanı oluşturuluyor"
-  elif [[ "$logs" == *"Downloading links"* ]] || [[ "$logs" == *"download"* ]]; then
+  elif [[ "$logs" == *"Building admin"* ]] || [[ "$logs" == *"valhalla_build_admins"* ]]; then
+    echo "Admin veritabanı oluşturuluyor (SQLite)"
+  elif [[ "$logs" == *"Downloading links"* ]] || [[ "$logs" == *"Download"* ]] || [[ "$logs" == *"wget"* ]] || [[ "$logs" == *"curl"* ]]; then
     echo "OSM harita dosyası (PBF) indiriliyor"
-  elif compgen -G "$CUSTOM_FILES/*.osm.pbf" >/dev/null 2>&1; then
-    echo "PBF indirildi, yapılandırma hazırlanıyor"
+  elif compgen -G "$CUSTOM_FILES/*.osm.pbf" >/dev/null 2>&1 || compgen -G "$CUSTOM_FILES/*.pbf" >/dev/null 2>&1; then
+    echo "PBF mevcut ($(valhalla_pbf_info)), yapılandırma hazırlanıyor"
   else
     echo "Container başlatılıyor"
   fi
@@ -114,8 +140,14 @@ valhalla_diagnose_failure() {
 
   echo ""
   error "Kurulum tamamlanamadı (container: ${status}, exit: ${exit_code})"
-  if [[ "$oom" == "true" ]]; then
-    warn "Bellek yetersiz (OOM). .env içinde SERVER_THREADS=2 yapın veya make region REGION=istanbul deneyin."
+  if [[ "$oom" == "true" ]] || docker logs valhalla 2>&1 | tail -80 | grep -qE 'Aborted|core dumped|Killed|Cannot allocate memory'; then
+    warn "Bellek yetersiz veya build çöktü."
+    warn "Çözüm: .env → SERVER_THREADS=1, sonra make clean && make rebuild"
+    warn "Hızlı test: make region REGION=istanbul"
+  fi
+  if docker logs valhalla 2>&1 | tail -80 | grep -q "valhalla_build_admins"; then
+    warn "Admin DB build başarısız. PBF dosyası eksik/bozuk olabilir:"
+    warn "  ls -lh valhalla/custom_files/*.pbf   (Türkiye ~500MB olmalı)"
   fi
   echo ""
   echo "────────── Container ──────────"

@@ -11,7 +11,7 @@ services:
       - ./valhalla/custom_files:/custom_files
     environment:
       tile_urls: ${TILE_URLS:-}
-      server_threads: ${SERVER_THREADS:-2}
+      server_threads: ${SERVER_THREADS:-1}
       use_tiles_ignore_pbf: ${USE_TILES_IGNORE_PBF:-True}
       force_rebuild: ${FORCE_REBUILD:-False}
       build_elevation: ${BUILD_ELEVATION:-False}

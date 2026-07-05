@@ -30,7 +30,14 @@ load_env
 REGION_NAME="${TILE_URLS%% *}"
 REGION_NAME="$(basename "$REGION_NAME" 2>/dev/null || echo "özel")"
 info "      Harita: ${REGION_NAME}"
-info "      Thread: ${SERVER_THREADS:-4}"
+info "      Thread: ${SERVER_THREADS:-2}"
+
+pbf_info="$(valhalla_pbf_info)"
+if [[ "$pbf_info" != "PBF henüz yok" ]]; then
+  info "      Mevcut PBF: ${pbf_info}"
+else
+  info "      PBF: container başlayınca indirilecek"
+fi
 
 shopt -s nullglob
 pbf_files=("$DATA_DIR"/pbf/*.osm.pbf "$DATA_DIR"/pbf/*.pbf)
@@ -61,9 +68,10 @@ warn "      Türkiye haritası 30-90 dk sürebilir. İlerleme aşağıda görün
 echo ""
 
 attempt=0
-max_attempts=360   # 360 × 15s = 90 dk
+max_attempts=360
 last_stage=""
 dots=0
+fatal_count=0
 
 while (( attempt < max_attempts )); do
   if curl -sf "http://localhost:${PORT}/status" >/dev/null 2>&1; then
@@ -87,6 +95,16 @@ while (( attempt < max_attempts )); do
     echo ""
     error "Container bulunamadı."
     exit 1
+  fi
+
+  if valhalla_fatal_in_logs; then
+    fatal_count=$((fatal_count + 1))
+    if (( fatal_count >= 3 )); then
+      echo ""
+      error "Build tekrar tekrar çöküyor (valhalla_build_admins / bellek)."
+      valhalla_diagnose_failure
+      exit 1
+    fi
   fi
 
   stage="$(valhalla_detect_stage)"
