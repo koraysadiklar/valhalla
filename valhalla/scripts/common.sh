@@ -231,6 +231,8 @@ valhalla_download_pbf() {
 
 valhalla_refresh_pbf() {
   load_env
+  ensure_dirs
+
   local url="${TILE_URLS%% *}"
   local filename dest
 
@@ -243,17 +245,25 @@ valhalla_refresh_pbf() {
   dest="$CUSTOM_FILES/$filename"
 
   info "Eski PBF ve build dosyaları siliniyor..."
-  docker rm -f valhalla 2>/dev/null || true
+  valhalla_cleanup_containers
 
   shopt -s nullglob
-  rm -f "$CUSTOM_FILES"/*.osm.pbf "$CUSTOM_FILES"/*.pbf "$DATA_DIR"/pbf/*.osm.pbf "$DATA_DIR"/pbf/*.pbf
+  rm -f "$CUSTOM_FILES"/*.osm.pbf "$CUSTOM_FILES"/*.pbf
   rm -f "$CUSTOM_FILES/.file_hashes.txt"
   rm -f "$CUSTOM_FILES/admins.sqlite" "$CUSTOM_FILES/timezones.sqlite"
   rm -f "$CUSTOM_FILES/valhalla_tiles.tar" "$CUSTOM_FILES/default_speeds.json"
   rm -rf "$CUSTOM_FILES/valhalla_tiles" 2>/dev/null || true
 
+  info "Hedef: $dest"
+
+  if [[ -f "$dest" ]] && [[ "${REFRESH_PBF:-False}" != "True" ]] && valhalla_verify_pbf "$dest" 2>/dev/null; then
+    info "Geçerli PBF zaten mevcut — indirme atlanıyor (REFRESH_PBF=True ile zorla)"
+    return 0
+  fi
+
+  rm -f "$dest"
   valhalla_download_pbf "$url" "$dest"
-  cp -f "$dest" "$DATA_DIR/pbf/$filename"
+  info "PBF hazır: $dest"
 }
 
 # Geriye dönük uyumluluk
@@ -392,6 +402,7 @@ valhalla_running() {
 }
 
 ensure_dirs() {
+  load_env
   mkdir -p \
     "$CUSTOM_FILES" \
     "$CUSTOM_FILES/elevation_data" \

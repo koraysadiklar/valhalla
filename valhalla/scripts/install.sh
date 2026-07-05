@@ -8,7 +8,6 @@ source "$SCRIPT_DIR/common.sh"
 cd "$ROOT_DIR"
 require_cmd curl
 require_docker
-ensure_dirs
 
 echo ""
 info "═══════════════════════════════════════"
@@ -26,6 +25,7 @@ else
 fi
 
 load_env
+ensure_dirs
 info "      Veri dizini: ${VALHALLA_DATA_DIR:-valhalla/custom_files (varsayılan)}"
 info "      Harita: $(basename "${TILE_URLS%% *}")"
 info "      Thread: ${SERVER_THREADS:-2}"
