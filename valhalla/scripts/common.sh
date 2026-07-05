@@ -41,12 +41,30 @@ require_cmd() {
   fi
 }
 
-require_docker() {
-  require_cmd docker
-  if ! docker compose version >/dev/null 2>&1; then
-    error "docker compose v2 gerekli."
+docker_compose() {
+  if docker compose version >/dev/null 2>&1; then
+    docker compose "$@"
+  elif command -v docker-compose >/dev/null 2>&1; then
+    docker-compose "$@"
+  else
+    error "docker compose (v2) veya docker-compose kurulu değil."
+    error "Kurulum: apt install -y docker-compose-plugin  veya  apt install -y docker-compose"
     exit 1
   fi
+}
+
+require_docker() {
+  require_cmd docker
+  if docker compose version >/dev/null 2>&1; then
+    return 0
+  fi
+  if command -v docker-compose >/dev/null 2>&1; then
+    warn "docker compose v2 yok; docker-compose (v1) kullanılıyor."
+    return 0
+  fi
+  error "docker compose veya docker-compose bulunamadı."
+  error "Kurulum: apt install -y docker-compose-plugin  veya  apt install -y docker-compose"
+  exit 1
 }
 
 ensure_dirs() {

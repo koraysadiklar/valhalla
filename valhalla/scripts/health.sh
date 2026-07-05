@@ -15,5 +15,5 @@ if curl -sf "${BASE_URL}/status" >/dev/null 2>&1; then
 fi
 
 error "Valhalla yanıt vermiyor (port ${PORT})"
-docker compose ps 2>/dev/null || true
+docker_compose ps 2>/dev/null || true
 exit 1

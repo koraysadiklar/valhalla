@@ -1,19 +1,21 @@
+COMPOSE := $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; elif command -v docker-compose >/dev/null 2>&1; then echo "docker-compose"; else echo "docker compose"; fi)
+
 .PHONY: install up down logs restart rebuild test status pull download backup clean update region proxy
 
 install:
 	@./valhalla/scripts/install.sh
 
 up:
-	docker compose up -d
+	$(COMPOSE) up -d
 
 down:
-	docker compose down
+	$(COMPOSE) down
 
 logs:
-	docker compose logs -f valhalla
+	$(COMPOSE) logs -f valhalla
 
 restart:
-	docker compose restart valhalla
+	$(COMPOSE) restart valhalla
 
 rebuild:
 	@./valhalla/scripts/build.sh
@@ -25,7 +27,7 @@ status:
 	@./valhalla/scripts/health.sh
 
 pull:
-	docker compose pull
+	$(COMPOSE) pull
 
 download:
 	@./valhalla/scripts/download.sh
@@ -40,7 +42,7 @@ update:
 	@./valhalla/scripts/update.sh
 
 proxy:
-	docker compose --profile proxy up -d
+	$(COMPOSE) --profile proxy up -d
 
 region:
 	@test -n "$(REGION)" || (echo "Kullanım: make region REGION=turkey" && exit 1)

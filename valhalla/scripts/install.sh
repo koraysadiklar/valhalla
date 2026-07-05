@@ -29,10 +29,10 @@ if ((${#pbf_files[@]})); then
 fi
 
 info "Docker imajı çekiliyor..."
-docker compose pull
+docker_compose pull
 
 info "Valhalla başlatılıyor..."
-docker compose up -d
+docker_compose up -d
 
 PORT="$(get_port)"
 info "Tile üretimi harita boyutuna göre uzun sürebilir."
@@ -50,7 +50,7 @@ while (( attempt < max_attempts )); do
     exit 0
   fi
 
-  if ! docker compose ps --status running --services 2>/dev/null | grep -q valhalla; then
+  if ! docker_compose ps --status running --services 2>/dev/null | grep -q valhalla; then
     error "Container çalışmıyor. Log: docker compose logs valhalla"
     exit 1
   fi

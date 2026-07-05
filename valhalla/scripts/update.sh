@@ -9,9 +9,9 @@ cd "$ROOT_DIR"
 require_docker
 
 info "Güncel imaj çekiliyor..."
-docker compose pull
+docker_compose pull
 
 info "Container yeniden oluşturuluyor..."
-docker compose up -d --force-recreate
+docker_compose up -d --force-recreate
 
 info "Tamamlandı."
