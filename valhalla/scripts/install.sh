@@ -50,8 +50,8 @@ while (( attempt < max_attempts )); do
     exit 0
   fi
 
-  if ! docker_compose ps --status running --services 2>/dev/null | grep -q valhalla; then
-    error "Container çalışmıyor. Log: docker compose logs valhalla"
+  if ! valhalla_running; then
+    error "Container çalışmıyor. Log: make logs"
     exit 1
   fi
 
@@ -62,4 +62,4 @@ done
 
 echo ""
 warn "Zaman aşımı — tile build devam ediyor olabilir."
-warn "Log: docker compose logs -f valhalla"
+warn "Log: make logs"

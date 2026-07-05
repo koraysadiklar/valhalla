@@ -10,4 +10,4 @@ require_docker
 
 info "Tile'lar zorla yeniden üretilecek..."
 FORCE_REBUILD=True docker_compose up -d --force-recreate
-info "Log: docker compose logs -f valhalla"
+info "Log: make logs"

@@ -3,6 +3,7 @@ COMPOSE := $(shell if docker compose version >/dev/null 2>&1; then echo "docker 
 .PHONY: install up down logs restart rebuild test status pull download backup clean update region proxy
 
 install:
+	@./valhalla/scripts/bootstrap.sh
 	@./valhalla/scripts/install.sh
 
 up:

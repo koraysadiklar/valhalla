@@ -67,6 +67,10 @@ require_docker() {
   exit 1
 }
 
+valhalla_running() {
+  docker ps --filter "name=^valhalla$" --filter "status=running" --format '{{.Names}}' 2>/dev/null | grep -qx valhalla
+}
+
 ensure_dirs() {
   mkdir -p \
     "$CUSTOM_FILES" \
