@@ -1,0 +1,48 @@
+{
+  "service_limits": {
+    "auto": {
+      "max_distance": 5000000.0,
+      "max_locations": 20,
+      "max_matrix_distance": 4000000.0,
+      "max_matrix_location_pairs": 2500
+    },
+    "pedestrian": {
+      "max_distance": 250000.0,
+      "max_locations": 50
+    },
+    "bicycle": {
+      "max_distance": 500000.0,
+      "max_locations": 50
+    }
+  },
+  "mjolnir": {
+    "logging": {
+      "type": "std_out",
+      "file_name": "path_to_some_file.log",
+      "long_request": 110.0
+    }
+  },
+  "loki": {
+    "logging": {
+      "type": "std_out",
+      "long_request": 100.0
+    }
+  },
+  "thor": {
+    "logging": {
+      "type": "std_out",
+      "long_request": 110.0
+    }
+  },
+  "meili": {
+    "customizable": ["mode", "search_radius", "turn_penalty_factor", "gps_accuracy"]
+  },
+  "httpd": {
+    "service": {
+      "listen": "0.0.0.0:8002",
+      "loopback": "127.0.0.1",
+      "interrupt": "ipc:///tmp/interrupt",
+      "timeout_seconds": -1
+    }
+  }
+}

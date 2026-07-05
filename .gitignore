@@ -1,0 +1,42 @@
+# Environment
+.env
+
+# Valhalla runtime data
+valhalla/custom_files/*
+!valhalla/custom_files/.gitkeep
+!valhalla/custom_files/elevation_data/.gitkeep
+
+valhalla/data/pbf/*
+valhalla/data/tiles/*
+valhalla/data/elevation/*
+valhalla/data/admin/*
+valhalla/data/timezone/*
+valhalla/data/transit/*
+valhalla/data/config/*
+!valhalla/data/pbf/.gitkeep
+!valhalla/data/tiles/.gitkeep
+!valhalla/data/elevation/.gitkeep
+!valhalla/data/admin/.gitkeep
+!valhalla/data/timezone/.gitkeep
+!valhalla/data/transit/.gitkeep
+!valhalla/data/config/.gitkeep
+
+valhalla/backups/*
+!valhalla/backups/.gitkeep
+
+# Export packages
+valhalla-stack-export*.tar.gz
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Temporary
+*.tmp
+*.bak

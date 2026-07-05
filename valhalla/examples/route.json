@@ -1,0 +1,9 @@
+{
+  "locations": [
+    {"lat": 41.0082, "lon": 28.9784},
+    {"lat": 41.0151, "lon": 29.0094}
+  ],
+  "costing": "auto",
+  "units": "kilometers",
+  "language": "tr-TR"
+}

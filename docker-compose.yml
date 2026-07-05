@@ -1,0 +1,42 @@
+services:
+  valhalla:
+    image: ghcr.io/valhalla/valhalla-scripted:latest
+    container_name: valhalla
+    restart: unless-stopped
+    ports:
+      - "${VALHALLA_PORT:-8002}:8002"
+    volumes:
+      - ./valhalla/custom_files:/custom_files
+    environment:
+      tile_urls: ${TILE_URLS:-}
+      server_threads: ${SERVER_THREADS:-4}
+      use_tiles_ignore_pbf: ${USE_TILES_IGNORE_PBF:-True}
+      force_rebuild: ${FORCE_REBUILD:-False}
+      build_elevation: ${BUILD_ELEVATION:-False}
+      build_admins: ${BUILD_ADMINS:-True}
+      build_time_zones: ${BUILD_TIME_ZONES:-True}
+      build_transit: ${BUILD_TRANSIT:-False}
+      build_tar: ${BUILD_TAR:-True}
+      serve_tiles: ${SERVE_TILES:-True}
+      update_existing_config: ${UPDATE_EXISTING_CONFIG:-True}
+      use_default_speeds_config: ${USE_DEFAULT_SPEEDS_CONFIG:-True}
+    mem_limit: ${VALHALLA_MEMORY_LIMIT:-8G}
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8002/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 2h
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: valhalla-nginx
+    profiles: ["proxy"]
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-80}:80"
+    volumes:
+      - ./valhalla/docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      valhalla:
+        condition: service_healthy

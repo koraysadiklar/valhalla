@@ -1,0 +1,27 @@
+name: smoke
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate docker-compose
+        run: docker compose config
+
+      - name: Check shell scripts
+        run: |
+          sudo apt-get install -y shellcheck
+          shellcheck valhalla/scripts/*.sh valhalla/tests/*.sh
+
+      - name: Validate JSON examples
+        run: |
+          sudo apt-get install -y jq
+          jq empty valhalla/examples/*.json
+          jq empty valhalla/config/valhalla.json.template

@@ -1,0 +1,9 @@
+{
+  "shape": [
+    {"lat": 41.0082, "lon": 28.9784},
+    {"lat": 41.0100, "lon": 28.9850},
+    {"lat": 41.0151, "lon": 29.0094}
+  ],
+  "costing": "auto",
+  "shape_match": "map_snap"
+}
