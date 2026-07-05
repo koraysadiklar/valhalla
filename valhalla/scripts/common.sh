@@ -118,6 +118,84 @@ require_docker() {
   warn "docker compose v2 yok — kurulum docker run ile yapılacak."
 }
 
+valhalla_pbf_min_bytes() {
+  local name="$1"
+  case "$name" in
+    *andorra*)     echo $((2 * 1024 * 1024)) ;;
+    *istanbul*)    echo $((10 * 1024 * 1024)) ;;
+    *turkey*)      echo $((200 * 1024 * 1024)) ;;
+    *)             echo $((5 * 1024 * 1024)) ;;
+  esac
+}
+
+valhalla_verify_pbf() {
+  local file="$1"
+  local min_bytes size
+
+  if [[ ! -f "$file" ]]; then
+    error "PBF bulunamadı: $file"
+    return 1
+  fi
+
+  size="$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file")"
+  min_bytes="$(valhalla_pbf_min_bytes "$(basename "$file")")"
+
+  if head -c 64 "$file" 2>/dev/null | grep -qiE '<!DOCTYPE|<html|Error|Access'; then
+    error "PBF geçersiz — HTML/hata sayfası indirilmiş: $file"
+    return 1
+  fi
+
+  if (( size < min_bytes )); then
+    error "PBF çok küçük veya yarım: $(basename "$file") ($(numfmt --to=iec "$size" 2>/dev/null || echo "${size} byte"), min ~$(numfmt --to=iec "$min_bytes" 2>/dev/null || echo "$min_bytes"))"
+    return 1
+  fi
+
+  info "PBF OK: $(basename "$file") ($(numfmt --to=iec "$size" 2>/dev/null || echo "${size} byte"))"
+  return 0
+}
+
+valhalla_download_pbf() {
+  local url="${1:?URL gerekli}"
+  local dest="${2:?Hedef dosya gerekli}"
+  local tmp="${dest}.part"
+
+  mkdir -p "$(dirname "$dest")"
+  rm -f "$tmp"
+  info "İndiriliyor: $url"
+
+  if command -v wget >/dev/null 2>&1; then
+    wget --progress=dot:giga -O "$tmp" "$url"
+  elif command -v curl >/dev/null 2>&1; then
+    curl -L --fail --progress-bar -o "$tmp" "$url"
+  else
+    error "wget veya curl gerekli."
+    return 1
+  fi
+
+  mv "$tmp" "$dest"
+  valhalla_verify_pbf "$dest"
+}
+
+valhalla_ensure_pbf() {
+  load_env
+  local url="${TILE_URLS%% *}"
+  local filename dest
+
+  [[ -z "$url" ]] && return 0
+
+  filename="$(basename "$url")"
+  dest="$CUSTOM_FILES/$filename"
+
+  if [[ -f "$dest" ]] && valhalla_verify_pbf "$dest" 2>/dev/null; then
+    return 0
+  fi
+
+  warn "PBF eksik veya bozuk — yeniden indiriliyor..."
+  rm -f "$dest" "$CUSTOM_FILES/.file_hashes.txt"
+  valhalla_download_pbf "$url" "$dest"
+  cp -f "$dest" "$DATA_DIR/pbf/$filename" 2>/dev/null || true
+}
+
 valhalla_container_status() {
   docker inspect -f '{{.State.Status}}' valhalla 2>/dev/null || echo "missing"
 }

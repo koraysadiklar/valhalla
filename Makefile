@@ -33,6 +33,9 @@ pull:
 download:
 	@./valhalla/scripts/download.sh
 
+fix-pbf:
+	@./valhalla/scripts/download.sh
+
 backup:
 	@./valhalla/scripts/backup.sh
 

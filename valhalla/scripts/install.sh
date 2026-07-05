@@ -26,6 +26,15 @@ else
   info "      .env mevcut"
 fi
 
+if [[ -f .env ]]; then
+  load_env
+  info "[1.5/5] PBF dosyası kontrol ediliyor..."
+  valhalla_ensure_pbf || {
+    error "PBF indirilemedi veya bozuk. Manuel: make download"
+    exit 1
+  }
+fi
+
 load_env
 REGION_NAME="${TILE_URLS%% *}"
 REGION_NAME="$(basename "$REGION_NAME" 2>/dev/null || echo "özel")"
