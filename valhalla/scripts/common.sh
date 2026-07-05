@@ -41,40 +41,81 @@ require_cmd() {
   fi
 }
 
+compose_v2_available() {
+  docker compose version >/dev/null 2>&1
+}
+
+valhalla_docker_pull() {
+  docker pull ghcr.io/valhalla/valhalla-scripted:latest
+}
+
+# docker-compose v1.29 ContainerConfig hatasını tamamen bypass eder
+valhalla_docker_start() {
+  docker rm -f valhalla 2>/dev/null || true
+
+  docker run -d \
+    --name valhalla \
+    --restart unless-stopped \
+    -p "${VALHALLA_PORT:-8002}:8002" \
+    -v "${CUSTOM_FILES}:/custom_files" \
+    -e "tile_urls=${TILE_URLS:-}" \
+    -e "server_threads=${SERVER_THREADS:-1}" \
+    -e "use_tiles_ignore_pbf=${USE_TILES_IGNORE_PBF:-True}" \
+    -e "force_rebuild=${FORCE_REBUILD:-False}" \
+    -e "build_elevation=${BUILD_ELEVATION:-False}" \
+    -e "build_admins=${BUILD_ADMINS:-True}" \
+    -e "build_time_zones=${BUILD_TIME_ZONES:-True}" \
+    -e "build_transit=${BUILD_TRANSIT:-False}" \
+    -e "build_tar=${BUILD_TAR:-True}" \
+    -e "serve_tiles=${SERVE_TILES:-True}" \
+    -e "update_existing_config=${UPDATE_EXISTING_CONFIG:-True}" \
+    -e "use_default_speeds_config=${USE_DEFAULT_SPEEDS_CONFIG:-True}" \
+    --memory 7g \
+    --shm-size 256m \
+    ghcr.io/valhalla/valhalla-scripted:latest
+}
+
+valhalla_pull() {
+  if compose_v2_available; then
+    docker compose pull
+  else
+    valhalla_docker_pull
+  fi
+}
+
+valhalla_start() {
+  load_env
+  if compose_v2_available; then
+    docker rm -f valhalla 2>/dev/null || true
+    docker compose up -d
+  else
+    warn "docker-compose v1 atlanıyor — doğrudan docker run kullanılıyor."
+    valhalla_docker_start
+  fi
+}
+
 docker_compose() {
-  if docker compose version >/dev/null 2>&1; then
+  if compose_v2_available; then
     docker compose "$@"
   elif command -v docker-compose >/dev/null 2>&1; then
     docker-compose "$@"
   else
-    error "docker compose (v2) veya docker-compose kurulu değil."
-    error "Kurulum: apt install -y docker-compose-plugin  veya  apt install -y docker-compose"
+    error "docker compose v2 yok. Kurulum: apt install -y docker-compose-plugin"
+    error "Alternatif: make install (docker run ile başlatır)"
     exit 1
   fi
 }
 
-# docker-compose v1.29 + yeni Docker Engine → KeyError: 'ContainerConfig'
-# Eski container'ı silip sıfırdan oluşturur.
 docker_compose_fresh_up() {
-  if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx valhalla; then
-    warn "Eski valhalla container'ı temizleniyor (ContainerConfig hatası önlemi)..."
-    docker rm -f valhalla 2>/dev/null || true
-  fi
-  docker_compose up -d "$@"
+  valhalla_start
 }
 
 require_docker() {
   require_cmd docker
-  if docker compose version >/dev/null 2>&1; then
+  if compose_v2_available; then
     return 0
   fi
-  if command -v docker-compose >/dev/null 2>&1; then
-    warn "docker compose v2 yok; docker-compose (v1) kullanılıyor."
-    return 0
-  fi
-  error "docker compose veya docker-compose bulunamadı."
-  error "Kurulum: apt install -y docker-compose-plugin  veya  apt install -y docker-compose"
-  exit 1
+  warn "docker compose v2 yok — kurulum docker run ile yapılacak."
 }
 
 valhalla_container_status() {

@@ -9,6 +9,7 @@ cd "$ROOT_DIR"
 require_docker
 
 info "Tile'lar zorla yeniden üretilecek..."
-docker rm -f valhalla 2>/dev/null || true
-FORCE_REBUILD=True docker_compose up -d
+load_env
+export FORCE_REBUILD=True
+valhalla_docker_start
 info "Log: make logs"

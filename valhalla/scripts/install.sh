@@ -49,13 +49,13 @@ fi
 # ── Aşama 2: Docker imaj ──
 echo ""
 info "[2/5] Docker imajı çekiliyor..."
-docker_compose pull
+valhalla_pull
 info "      İmaj hazır"
 
 # ── Aşama 3: Container başlat ──
 echo ""
 info "[3/5] Container başlatılıyor..."
-docker_compose_fresh_up
+valhalla_start
 sleep 3
 info "      Container ID: $(docker ps -aq --filter name=^valhalla$ | head -1)"
 
