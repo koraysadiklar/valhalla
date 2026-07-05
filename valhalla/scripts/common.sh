@@ -23,6 +23,19 @@ load_env() {
     source "$ROOT_DIR/.env"
     set +a
   fi
+  resolve_data_paths
+}
+
+resolve_data_paths() {
+  if [[ -n "${VALHALLA_DATA_DIR:-}" ]]; then
+    CUSTOM_FILES="${VALHALLA_DATA_DIR}/custom_files"
+    DATA_DIR="${VALHALLA_DATA_DIR}/data"
+    BACKUP_DIR="${VALHALLA_DATA_DIR}/backups"
+  else
+    CUSTOM_FILES="$VALHALLA_DIR/custom_files"
+    DATA_DIR="$VALHALLA_DIR/data"
+    BACKUP_DIR="$VALHALLA_DIR/backups"
+  fi
 }
 
 get_port() {
@@ -59,13 +72,16 @@ valhalla_docker_start() {
     tile_urls_env="${TILE_URLS:-}"
   fi
 
+  local mem="${VALHALLA_MEMORY_LIMIT:-14g}"
+  local shm="${VALHALLA_SHM_SIZE:-512m}"
+
   docker run -d \
     --name valhalla \
     --restart unless-stopped \
     -p "${VALHALLA_PORT:-8002}:8002" \
     -v "${CUSTOM_FILES}:/custom_files" \
     -e "tile_urls=${tile_urls_env}" \
-    -e "server_threads=${SERVER_THREADS:-1}" \
+    -e "server_threads=${SERVER_THREADS:-2}" \
     -e "use_tiles_ignore_pbf=${USE_TILES_IGNORE_PBF:-False}" \
     -e "force_rebuild=${FORCE_REBUILD:-False}" \
     -e "build_elevation=${BUILD_ELEVATION:-False}" \
@@ -76,8 +92,8 @@ valhalla_docker_start() {
     -e "serve_tiles=${SERVE_TILES:-True}" \
     -e "update_existing_config=${UPDATE_EXISTING_CONFIG:-True}" \
     -e "use_default_speeds_config=${USE_DEFAULT_SPEEDS_CONFIG:-True}" \
-    --memory 7g \
-    --shm-size 256m \
+    --memory "$mem" \
+    --shm-size "$shm" \
     ghcr.io/valhalla/valhalla-scripted:latest
 }
 
@@ -117,10 +133,17 @@ require_docker() {
 valhalla_pbf_min_bytes() {
   local name="$1"
   case "$name" in
-    *andorra*)     echo $((2 * 1024 * 1024)) ;;
-    *istanbul*)    echo $((10 * 1024 * 1024)) ;;
-    *turkey*)      echo $((200 * 1024 * 1024)) ;;
-    *)             echo $((5 * 1024 * 1024)) ;;
+    *planet*|*world*)       echo $((50 * 1024 * 1024 * 1024)) ;;
+    *europe-latest*)        echo $((25 * 1024 * 1024 * 1024)) ;;
+    *north-america-latest*) echo $((12 * 1024 * 1024 * 1024)) ;;
+    *asia-latest*)          echo $((10 * 1024 * 1024 * 1024)) ;;
+    *africa-latest*)        echo $((4 * 1024 * 1024 * 1024)) ;;
+    *south-america-latest*) echo $((2 * 1024 * 1024 * 1024)) ;;
+    *australia-oceania*)    echo $((800 * 1024 * 1024)) ;;
+    *andorra*)              echo $((2 * 1024 * 1024)) ;;
+    *turkey*)               echo $((200 * 1024 * 1024)) ;;
+    *germany*)              echo $((2 * 1024 * 1024 * 1024)) ;;
+    *)                      echo $((5 * 1024 * 1024)) ;;
   esac
 }
 

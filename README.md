@@ -18,23 +18,30 @@ make install
 2. Eski PBF'yi siler, yeniden indirir
 3. Container'ı başlatır ve build'i izler
 
-## Gereksinimler
+## Gereksinimler (sunucunuza göre)
 
-| Bölge | RAM | Disk |
-|-------|-----|------|
-| İstanbul (test) | 4 GB | 5 GB |
-| Türkiye | 8 GB | 20 GB |
-| Almanya | 16 GB | 50 GB |
+| Profil | PBF | Disk | RAM | Build süresi |
+|--------|-----|------|-----|--------------|
+| `test` | 2 MB | 1 GB | 2 GB | 2 dk |
+| `turkey` | 600 MB | 20 GB | 8 GB | 1 saat |
+| `europe` | 32 GB | 200 GB | 16 GB | 24-72 saat |
+| `world` | 80 GB | 600 GB | **64 GB** | 3-7 gün |
 
-- Docker Engine 24+
-- Docker Compose v2
+```bash
+make regions              # Tüm profilleri listele
+make region REGION=europe # Kıta/ülke seç
+make install              # Kur
+```
+
+Detay: [valhalla/docs/REGIONS.md](valhalla/docs/REGIONS.md)
 
 ## Komutlar
 
 | Komut | Açıklama |
 |-------|----------|
 | `make install` | Tam kurulum (env + pull + up + bekle) |
-| `make region REGION=turkey` | Bölge profili seç |
+| `make regions` | Tüm bölge profillerini listele |
+| `make region REGION=europe` | Kıta/ülke profili seç |
 | `make download` | PBF indir |
 | `make up` / `make down` | Başlat / durdur |
 | `make logs` | Logları izle |
