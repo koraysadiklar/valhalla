@@ -16,64 +16,43 @@ info "  Valhalla Stack — Kurulum"
 info "═══════════════════════════════════════"
 echo ""
 
-# ── Aşama 1: Ortam ──
-info "[1/5] Ortam dosyaları kontrol ediliyor..."
+# ── [1/6] Ortam ──
+info "[1/6] Ortam dosyaları"
 if [[ ! -f .env ]]; then
-  cp .env.example .env
-  info "      .env oluşturuldu (.env.example)"
-  warn "      Bölge: make region REGION=turkey"
+  cp valhalla/regions/turkey.env .env
+  info "      .env oluşturuldu (varsayılan: turkey)"
 else
   info "      .env mevcut"
 fi
 
-if [[ -f .env ]]; then
-  load_env
-  info "[1.5/5] PBF dosyası kontrol ediliyor..."
-  valhalla_ensure_pbf || {
-    error "PBF indirilemedi veya bozuk. Manuel: make download"
-    exit 1
-  }
-fi
-
 load_env
-REGION_NAME="${TILE_URLS%% *}"
-REGION_NAME="$(basename "$REGION_NAME" 2>/dev/null || echo "özel")"
-info "      Harita: ${REGION_NAME}"
-info "      Thread: ${SERVER_THREADS:-2}"
+info "      Harita: $(basename "${TILE_URLS%% *}")"
+info "      Thread: ${SERVER_THREADS:-1}"
 
-pbf_info="$(valhalla_pbf_info)"
-if [[ "$pbf_info" != "PBF henüz yok" ]]; then
-  info "      Mevcut PBF: ${pbf_info}"
-else
-  info "      PBF: container başlayınca indirilecek"
-fi
-
-shopt -s nullglob
-pbf_files=("$DATA_DIR"/pbf/*.osm.pbf "$DATA_DIR"/pbf/*.pbf)
-if ((${#pbf_files[@]})); then
-  info "      Yerel PBF dosyaları custom_files'a kopyalanıyor..."
-  cp -f "${pbf_files[@]}" "$CUSTOM_FILES/"
-fi
-
-# ── Aşama 2: Docker imaj ──
+# ── [2/6] PBF sil + yeniden indir ──
 echo ""
-info "[2/5] Docker imajı çekiliyor..."
+info "[2/6] PBF indiriliyor (eski dosya silinip yeniden yüklenir)"
+valhalla_refresh_pbf
+
+# ── [3/6] Docker imaj ──
+echo ""
+info "[3/6] Docker imajı çekiliyor..."
 valhalla_pull
 info "      İmaj hazır"
 
-# ── Aşama 3: Container başlat ──
+# ── [4/6] Container ──
 echo ""
-info "[3/5] Container başlatılıyor..."
+info "[4/6] Container başlatılıyor..."
 valhalla_start
 sleep 3
-info "      Container ID: $(docker ps -aq --filter name=^valhalla$ | head -1)"
+info "      Container: $(docker ps -aq --filter name=^valhalla$ | head -1)"
 
 PORT="$(get_port)"
 
-# ── Aşama 4: Build izleme ──
+# ── [5/6] Build izleme ──
 echo ""
-info "[4/5] Tile build & servis bekleniyor"
-warn "      Türkiye haritası 30-90 dk sürebilir. İlerleme aşağıda görünür."
+info "[5/6] Tile build & servis bekleniyor"
+warn "      Türkiye haritası 30-90 dk sürebilir."
 echo ""
 
 attempt=0
@@ -86,7 +65,7 @@ while (( attempt < max_attempts )); do
   if curl -sf "http://localhost:${PORT}/status" >/dev/null 2>&1; then
     echo ""
     echo ""
-    info "[5/5] Servis hazır!"
+    info "[6/6] Servis hazır!"
     info "      URL: http://localhost:${PORT}/status"
     info "      Test: make test"
     exit 0
@@ -110,7 +89,7 @@ while (( attempt < max_attempts )); do
     fatal_count=$((fatal_count + 1))
     if (( fatal_count >= 3 )); then
       echo ""
-      error "Build tekrar tekrar çöküyor (valhalla_build_admins / bellek)."
+      error "Build tekrar tekrar çöküyor."
       valhalla_diagnose_failure
       exit 1
     fi
@@ -131,11 +110,10 @@ while (( attempt < max_attempts )); do
     printf "."
     if (( dots % 40 == 0 )); then
       echo ""
-      info "      … ${mins}dk ${secs}sn geçti — hâlâ: ${stage}"
+      info "      … ${mins}dk ${secs}sn — ${stage}"
     fi
   fi
 
-  # Her ~2 dakikada son log satırını göster
   if (( attempt > 0 && attempt % 8 == 0 )); then
     log_line="$(valhalla_log_tail 1)"
     if [[ -n "$log_line" ]]; then
@@ -149,7 +127,5 @@ while (( attempt < max_attempts )); do
 done
 
 echo ""
-warn "Zaman aşımı (90 dk) — build hâlâ devam ediyor olabilir."
-warn "Container çalışıyorsa endişelenmeyin: make logs"
-valhalla_diagnose_failure
+warn "Zaman aşımı — build devam ediyor olabilir: make logs"
 exit 0

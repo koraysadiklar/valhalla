@@ -7,20 +7,16 @@ Resmi `ghcr.io/valhalla/valhalla-scripted` Docker imajı kullanılır.
 ## Hızlı başlangıç
 
 ```bash
-git clone <repo-url> valhalla-stack && cd valhalla-stack
-chmod +x valhalla/scripts/*.sh valhalla/tests/*.sh
+chmod +x valhalla/scripts/*.sh
 
-# Türkiye haritası ile kur
 make region REGION=turkey
 make install
 ```
 
-Hızlı test için:
-
-```bash
-make region REGION=istanbul
-make install
-```
+`make install` otomatik olarak:
+1. Bağımlılıkları kurar (`make`, `wget`, `curl`)
+2. Eski PBF'yi siler, yeniden indirir
+3. Container'ı başlatır ve build'i izler
 
 ## Gereksinimler
 

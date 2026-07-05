@@ -53,14 +53,20 @@ valhalla_docker_pull() {
 valhalla_docker_start() {
   docker rm -f valhalla 2>/dev/null || true
 
+  # PBF host'ta indirildi — container tekrar indirmesin
+  local tile_urls_env=""
+  if ! compgen -G "$CUSTOM_FILES/*.pbf" >/dev/null && ! compgen -G "$CUSTOM_FILES/*.osm.pbf" >/dev/null; then
+    tile_urls_env="${TILE_URLS:-}"
+  fi
+
   docker run -d \
     --name valhalla \
     --restart unless-stopped \
     -p "${VALHALLA_PORT:-8002}:8002" \
     -v "${CUSTOM_FILES}:/custom_files" \
-    -e "tile_urls=${TILE_URLS:-}" \
+    -e "tile_urls=${tile_urls_env}" \
     -e "server_threads=${SERVER_THREADS:-1}" \
-    -e "use_tiles_ignore_pbf=${USE_TILES_IGNORE_PBF:-True}" \
+    -e "use_tiles_ignore_pbf=${USE_TILES_IGNORE_PBF:-False}" \
     -e "force_rebuild=${FORCE_REBUILD:-False}" \
     -e "build_elevation=${BUILD_ELEVATION:-False}" \
     -e "build_admins=${BUILD_ADMINS:-True}" \
@@ -76,22 +82,12 @@ valhalla_docker_start() {
 }
 
 valhalla_pull() {
-  if compose_v2_available; then
-    docker compose pull
-  else
-    valhalla_docker_pull
-  fi
+  valhalla_docker_pull
 }
 
 valhalla_start() {
   load_env
-  if compose_v2_available; then
-    docker rm -f valhalla 2>/dev/null || true
-    docker compose up -d
-  else
-    warn "docker-compose v1 atlanıyor — doğrudan docker run kullanılıyor."
-    valhalla_docker_start
-  fi
+  valhalla_docker_start
 }
 
 docker_compose() {
@@ -176,24 +172,36 @@ valhalla_download_pbf() {
   valhalla_verify_pbf "$dest"
 }
 
-valhalla_ensure_pbf() {
+valhalla_refresh_pbf() {
   load_env
   local url="${TILE_URLS%% *}"
   local filename dest
 
-  [[ -z "$url" ]] && return 0
+  if [[ -z "$url" ]]; then
+    error "TILE_URLS .env içinde tanımlı değil. Önce: make region REGION=turkey"
+    return 1
+  fi
 
   filename="$(basename "$url")"
   dest="$CUSTOM_FILES/$filename"
 
-  if [[ -f "$dest" ]] && valhalla_verify_pbf "$dest" 2>/dev/null; then
-    return 0
-  fi
+  info "Eski PBF ve build dosyaları siliniyor..."
+  docker rm -f valhalla 2>/dev/null || true
 
-  warn "PBF eksik veya bozuk — yeniden indiriliyor..."
-  rm -f "$dest" "$CUSTOM_FILES/.file_hashes.txt"
+  shopt -s nullglob
+  rm -f "$CUSTOM_FILES"/*.osm.pbf "$CUSTOM_FILES"/*.pbf "$DATA_DIR"/pbf/*.osm.pbf "$DATA_DIR"/pbf/*.pbf
+  rm -f "$CUSTOM_FILES/.file_hashes.txt"
+  rm -f "$CUSTOM_FILES/admins.sqlite" "$CUSTOM_FILES/timezones.sqlite"
+  rm -f "$CUSTOM_FILES/valhalla_tiles.tar" "$CUSTOM_FILES/default_speeds.json"
+  rm -rf "$CUSTOM_FILES/valhalla_tiles" 2>/dev/null || true
+
   valhalla_download_pbf "$url" "$dest"
-  cp -f "$dest" "$DATA_DIR/pbf/$filename" 2>/dev/null || true
+  cp -f "$dest" "$DATA_DIR/pbf/$filename"
+}
+
+# Geriye dönük uyumluluk
+valhalla_ensure_pbf() {
+  valhalla_refresh_pbf
 }
 
 valhalla_container_status() {
@@ -229,6 +237,8 @@ valhalla_fatal_in_logs() {
   logs="$(docker logs valhalla 2>&1 | tail -80)"
   [[ "$logs" == *"Aborted"* ]] || \
   [[ "$logs" == *"core dumped"* ]] || \
+  [[ "$logs" == *"pbf_error"* ]] || \
+  [[ "$logs" == *"invalid BlobHeader"* ]] || \
   [[ "$logs" == *"Killed"* ]] || \
   [[ "$logs" == *"Cannot allocate memory"* ]] || \
   [[ "$logs" == *"valhalla_build_admins"* && "$logs" == *"ERROR"* ]]
