@@ -34,6 +34,15 @@ backup:
 clean:
 	@./valhalla/scripts/clean.sh
 
+volume-check:
+	@sudo ./valhalla/scripts/setup-volume.sh
+
+swap:
+	@sudo ./valhalla/scripts/setup-swap.sh
+
+resize-volume:
+	@sudo resize2fs /dev/sda && df -h /mnt/volume_ams3_1782933520272
+
 regions:
 	@echo "Kullanım: make region REGION=<isim>"
 	@echo ""
@@ -46,7 +55,7 @@ regions:
 	@echo "    oceania         Avustralya + Okyanusya (~1.5 GB)"
 	@echo ""
 	@echo "  Dünya:"
-	@echo "    world           Planet (~80 GB, 64 GB+ RAM gerekir)"
+	@echo "    world           Planet + elevation (~80 GB PBF, 32GB RAM+swap)"
 	@echo ""
 	@echo "  Ülkeler / test:"
 	@echo "    turkey          Türkiye"

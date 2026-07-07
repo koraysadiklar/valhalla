@@ -73,7 +73,10 @@ valhalla_docker_start() {
   fi
 
   local mem="${VALHALLA_MEMORY_LIMIT:-14g}"
+  local mem_swap="${VALHALLA_MEMORY_SWAP:--1}"
   local shm="${VALHALLA_SHM_SIZE:-512m}"
+
+  info "Container: memory=${mem}, memory-swap=${mem_swap}, threads=${SERVER_THREADS:-2}"
 
   docker run -d \
     --name valhalla \
@@ -93,6 +96,7 @@ valhalla_docker_start() {
     -e "update_existing_config=${UPDATE_EXISTING_CONFIG:-True}" \
     -e "use_default_speeds_config=${USE_DEFAULT_SPEEDS_CONFIG:-True}" \
     --memory "$mem" \
+    --memory-swap "$mem_swap" \
     --shm-size "$shm" \
     ghcr.io/valhalla/valhalla-scripted:latest
 }
@@ -103,6 +107,7 @@ valhalla_pull() {
 
 valhalla_start() {
   load_env
+  valhalla_prepare_custom_files
   valhalla_docker_start
 }
 
@@ -249,7 +254,7 @@ valhalla_refresh_pbf() {
 
   shopt -s nullglob
   rm -f "$CUSTOM_FILES"/*.osm.pbf "$CUSTOM_FILES"/*.pbf
-  rm -f "$CUSTOM_FILES/.file_hashes.txt"
+  rm -f "$CUSTOM_FILES/file_hashes.txt"
   rm -f "$CUSTOM_FILES/admins.sqlite" "$CUSTOM_FILES/timezones.sqlite"
   rm -f "$CUSTOM_FILES/valhalla_tiles.tar" "$CUSTOM_FILES/default_speeds.json"
   rm -rf "$CUSTOM_FILES/valhalla_tiles" 2>/dev/null || true
@@ -258,11 +263,13 @@ valhalla_refresh_pbf() {
 
   if [[ -f "$dest" ]] && [[ "${REFRESH_PBF:-False}" != "True" ]] && valhalla_verify_pbf "$dest" 2>/dev/null; then
     info "Geçerli PBF zaten mevcut — indirme atlanıyor (REFRESH_PBF=True ile zorla)"
+    valhalla_prepare_custom_files
     return 0
   fi
 
   rm -f "$dest"
   valhalla_download_pbf "$url" "$dest"
+  valhalla_prepare_custom_files
   info "PBF hazır: $dest"
 }
 
@@ -353,6 +360,8 @@ valhalla_detect_stage() {
     echo "HTTP servisi başlatılıyor"
   elif [[ "$logs" == *"Enhancing the initial graph"* ]]; then
     echo "Graph iyileştiriliyor (son aşama)"
+  elif [[ "$logs" == *"Download the elevation tiles"* ]] || [[ "$logs" == *"valhalla_build_elevation"* ]]; then
+    echo "Elevation karoları indiriliyor"
   elif [[ "$logs" == *"Build the initial graph"* ]] || [[ "$logs" == *"valhalla_build_tiles"* ]]; then
     echo "Routing tile'ları üretiliyor"
   elif [[ "$logs" == *"Building timezone"* ]]; then
@@ -406,6 +415,8 @@ ensure_dirs() {
   mkdir -p \
     "$CUSTOM_FILES" \
     "$CUSTOM_FILES/elevation_data" \
+    "$CUSTOM_FILES/transit_tiles" \
+    "$CUSTOM_FILES/valhalla_tiles" \
     "$DATA_DIR/pbf" \
     "$DATA_DIR/tiles" \
     "$DATA_DIR/elevation" \
@@ -413,4 +424,21 @@ ensure_dirs() {
     "$DATA_DIR/timezone" \
     "$DATA_DIR/transit" \
     "$BACKUP_DIR"
+}
+
+# Valhalla container beklentileri: transit_tiles dizini + file_hashes.txt
+valhalla_prepare_custom_files() {
+  load_env
+  ensure_dirs
+
+  local pbf container_path hash
+
+  shopt -s nullglob
+  for pbf in "$CUSTOM_FILES"/*.osm.pbf "$CUSTOM_FILES"/*.pbf; do
+    container_path="/custom_files/$(basename "$pbf")"
+    hash="$(printf '%s' "$container_path" | sha256sum | cut -f1 -d' ')"
+    echo "$hash" > "$CUSTOM_FILES/file_hashes.txt"
+    info "PBF hash kaydedildi: file_hashes.txt"
+    return 0
+  done
 }

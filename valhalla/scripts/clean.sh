@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 cd "$ROOT_DIR"
+load_env
 
 warn "Üretilmiş tile, config ve hash dosyaları silinecek (PBF korunur)."
 read -r -p "Devam? [y/N] " confirm
@@ -14,7 +15,7 @@ read -r -p "Devam? [y/N] " confirm
 shopt -s nullglob
 for f in "$CUSTOM_FILES"/valhalla_tiles.tar \
          "$CUSTOM_FILES"/valhalla.json \
-         "$CUSTOM_FILES"/.file_hashes.txt \
+         "$CUSTOM_FILES"/file_hashes.txt \
          "$CUSTOM_FILES"/admins.sqlite \
          "$CUSTOM_FILES"/timezones.sqlite \
          "$CUSTOM_FILES"/default_speeds.json; do

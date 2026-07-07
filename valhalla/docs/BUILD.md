@@ -34,7 +34,7 @@ make rebuild
 - `valhalla.json` — yapılandırma
 - `admins.sqlite` — admin sınırları
 - `timezones.sqlite` — saat dilimleri
-- `.file_hashes.txt` — PBF hash takibi
+- `file_hashes.txt` — PBF hash takibi
 
 ## Temizlik
 

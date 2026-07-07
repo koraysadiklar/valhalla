@@ -29,6 +29,18 @@ ensure_dirs
 info "      Veri dizini: ${VALHALLA_DATA_DIR:-valhalla/custom_files (varsayılan)}"
 info "      Harita: $(basename "${TILE_URLS%% *}")"
 info "      Thread: ${SERVER_THREADS:-2}"
+info "      Elevation: ${BUILD_ELEVATION:-False}"
+
+# ── [1.5/6] Swap (planet için) ──
+if [[ "${SETUP_SWAP:-False}" == "True" ]]; then
+  echo ""
+  info "[1.5/6] Swap kontrolü"
+  if [[ $EUID -eq 0 ]]; then
+    "$SCRIPT_DIR/setup-swap.sh"
+  else
+    sudo "$SCRIPT_DIR/setup-swap.sh"
+  fi
+fi
 
 # ── [2/6] PBF sil + yeniden indir ──
 echo ""
@@ -52,12 +64,13 @@ PORT="$(get_port)"
 
 # ── [5/6] Build izleme ──
 echo ""
+wait_hours="${INSTALL_WAIT_HOURS:-24}"
 info "[5/6] Tile build & servis bekleniyor"
-warn "      Maksimum bekleme: ${wait_hours} saat (INSTALL_WAIT_HOURS)"
+warn "      Maksimum bekleme: ${wait_hours} saat"
+info "      İlk build'de 'No routing tiles' uyarısı normaldir."
 echo ""
 
 attempt=0
-wait_hours="${INSTALL_WAIT_HOURS:-24}"
 max_attempts=$(( wait_hours * 3600 / 15 ))
 last_stage=""
 dots=0
