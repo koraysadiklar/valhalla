@@ -14,7 +14,7 @@ fi
 load_env
 
 SWAP_SIZE="${SWAP_SIZE:-16G}"
-SWAP_FILE="${SWAP_FILE:-/mnt/volume-valhalla/swapfile}"
+SWAP_FILE="${SWAP_FILE:-/mnt/volume_valhalla/swapfile}"
 VOLUME_ROOT="$(dirname "$SWAP_FILE")"
 
 info "Swap kurulumu: ${SWAP_SIZE} → ${SWAP_FILE}"

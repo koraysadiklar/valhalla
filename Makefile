@@ -42,7 +42,7 @@ swap:
 
 resize-volume:
 	@echo "Volume cihazını lsblk ile bulun, sonra: sudo resize2fs /dev/XXX"
-	@df -h /mnt/volume-valhalla 2>/dev/null || df -h | grep -i volume || true
+	@df -h /mnt/volume_valhalla 2>/dev/null || df -h | grep -i volume || true
 
 regions:
 	@echo "Kullanım: make region REGION=<isim>"
