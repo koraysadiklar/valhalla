@@ -41,7 +41,8 @@ swap:
 	@sudo ./valhalla/scripts/setup-swap.sh
 
 resize-volume:
-	@sudo resize2fs /dev/sda && df -h /mnt/volume_ams3_1782933520272
+	@echo "Volume cihazını lsblk ile bulun, sonra: sudo resize2fs /dev/XXX"
+	@df -h /mnt/volume-valhalla 2>/dev/null || df -h | grep -i volume || true
 
 regions:
 	@echo "Kullanım: make region REGION=<isim>"
@@ -55,7 +56,7 @@ regions:
 	@echo "    oceania         Avustralya + Okyanusya (~1.5 GB)"
 	@echo ""
 	@echo "  Dünya:"
-	@echo "    world           Planet + elevation (~80 GB PBF, 32GB RAM+swap)"
+	@echo "    world           Planet + elevation (4 thread, 16GB RAM + 16GB swap)"
 	@echo ""
 	@echo "  Ülkeler / test:"
 	@echo "    turkey          Türkiye"
